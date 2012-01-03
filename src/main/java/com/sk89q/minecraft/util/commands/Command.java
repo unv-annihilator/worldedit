@@ -69,6 +69,11 @@ public @interface Command {
     String flags() default "";
 
     /**
+     * When this is set to true, any flag can be given to this command.
+     */
+    boolean allowAllFlags() default false;
+
+    /**
      * A long description for the command.
      */
     String help() default "";

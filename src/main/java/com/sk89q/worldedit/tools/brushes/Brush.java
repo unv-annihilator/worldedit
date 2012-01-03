@@ -19,17 +19,25 @@
 
 package com.sk89q.worldedit.tools.brushes;
 
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.MaxChangedBlocksException;
-import com.sk89q.worldedit.Vector;
+import com.sk89q.minecraft.util.commands.CommandContext;
+import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.patterns.Pattern;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Represents a brush.
  *
  * @author sk89q
  */
-public interface Brush {
+public abstract class Brush {
+    private Set<Character> valueFlags;
+    
+    protected Brush(Character... valueFlags) {
+        this.valueFlags = new HashSet<Character>(Arrays.asList(valueFlags));
+    }
     /**
      * Build the object.
      * 
@@ -39,6 +47,13 @@ public interface Brush {
      * @param size
      * @throws MaxChangedBlocksException 
      */
-    public void build(EditSession editSession, Vector pos, Pattern mat, double size)
+    public abstract void build(EditSession editSession, Vector pos, Pattern mat, double size)
             throws MaxChangedBlocksException;
+
+    public abstract void parseInput(CommandContext args, LocalPlayer player,
+            LocalSession session, WorldEdit we) throws WorldEditException;
+
+    public Set<Character> getValueFlags() {
+        return valueFlags;
+    }
 }

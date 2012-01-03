@@ -19,20 +19,31 @@
 
 package com.sk89q.worldedit.tools.brushes;
 
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.MaxChangedBlocksException;
-import com.sk89q.worldedit.Vector;
+import com.sk89q.minecraft.util.commands.CommandContext;
+import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.patterns.Pattern;
 
-public class HollowCylinderBrush implements Brush {
+public class HollowCylinderBrush extends Brush {
     private int height;
+    
+    public HollowCylinderBrush() {
+        super('h');
+    }
 
     public HollowCylinderBrush(int height) {
+        this();
         this.height = height;
     }
 
     public void build(EditSession editSession, Vector pos, Pattern mat, double size)
             throws MaxChangedBlocksException {
         editSession.makeCylinder(pos, mat, size, size, height, false);
+    }
+
+    @Override
+    public void parseInput(CommandContext args, LocalPlayer player, LocalSession session, WorldEdit we) throws WorldEditException {
+        if (args.hasFlag('h')) {
+            this.height = args.getFlagInteger('h');
+        }
     }
 }

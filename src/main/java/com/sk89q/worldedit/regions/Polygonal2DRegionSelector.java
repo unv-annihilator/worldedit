@@ -163,8 +163,10 @@ public class Polygonal2DRegionSelector implements RegionSelector, CUIRegion {
     }
 
     public void learnChanges() {
-        BlockVector2D pt = region.getPoints().get(0);
-        pos1 = new BlockVector(pt.getBlockX(), region.getMinimumPoint().getBlockY(), pt.getBlockZ());
+        if (region.getPoints().size() > 0) {
+            BlockVector2D pt = region.getPoints().get(0);
+            pos1 = new BlockVector(pt.getBlockX(), region.getMinimumPoint().getBlockY(), pt.getBlockZ());
+        }
     }
 
     public void clear() {

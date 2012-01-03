@@ -487,10 +487,11 @@ public abstract class CommandsManager<T> {
             if (cmd.max() != -1 && context.argsLength() > cmd.max()) {
                 throw new CommandUsageException("Too many arguments.", getUsage(args, level, cmd));
             }
-
-            for (char flag : context.getFlags()) {
-                if (!newFlags.contains(flag)) {
-                    throw new CommandUsageException("Unknown flag: " + flag, getUsage(args, level, cmd));
+            if (!cmd.allowAllFlags()) {
+                for (char flag : context.getFlags()) {
+                    if (!newFlags.contains(flag)) {
+                        throw new CommandUsageException("Unknown flag: " + flag, getUsage(args, level, cmd));
+                    }
                 }
             }
 

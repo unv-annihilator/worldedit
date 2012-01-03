@@ -90,10 +90,8 @@ public class WorldEditPlayerListener extends PlayerListener {
 
         if (split.length > 0) {
             split = plugin.getWorldEdit().commandDetection(split);
-            split[0] += "/";
+            event.setMessage("/" + StringUtil.joinString(split, " "));
         }
-
-        event.setMessage(StringUtil.joinString(split, " "));
     }
 
     /**

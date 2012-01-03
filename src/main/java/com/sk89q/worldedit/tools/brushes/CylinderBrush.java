@@ -19,20 +19,43 @@
 
 package com.sk89q.worldedit.tools.brushes;
 
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.MaxChangedBlocksException;
-import com.sk89q.worldedit.Vector;
+import com.sk89q.minecraft.util.commands.CommandContext;
+import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.patterns.Pattern;
 
-public class CylinderBrush implements Brush {
+public class CylinderBrush extends Brush {
     private int height;
 
+    public CylinderBrush() {
+        super('h');
+    }
     public CylinderBrush(int height) {
+        this();
         this.height = height;
     }
 
     public void build(EditSession editSession, Vector pos, Pattern mat, double size)
             throws MaxChangedBlocksException {
         editSession.makeCylinder(pos, mat, size, size, height, true);
+    }
+
+    @Override
+    public void parseInput(CommandContext args, LocalPlayer player, LocalSession session, WorldEdit we) throws WorldEditException {
+        if (args.hasFlag('h')) {
+            height = args.getFlagInteger('h');
+        }
+    }
+
+    public static class Factory implements BrushFactory {
+
+        @Override
+        public Brush createBrush() {
+            return new CylinderBrush();
+        }
+
+        @Override
+        public String getPermission() {
+            return "worldedit.brush.cylinder";
+        }
     }
 }

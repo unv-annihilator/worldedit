@@ -228,6 +228,65 @@ public class TreeGenerator {
     }
 
     /**
+     * Makes a terrible looking pine tree.
+     *
+     * @param basePos
+     */
+    private static void makeRedMushroom(EditSession editSession, Vector basePos)
+            throws MaxChangedBlocksException {
+        int trunkHeight = (int) Math.floor(Math.random() * 2) + 3;
+        int height = (int) Math.floor(Math.random() * 5) + 8;
+
+        BaseBlock logBlock = new BaseBlock(BlockID.LOG);
+        BaseBlock leavesBlock = new BaseBlock(BlockID.LEAVES);
+
+        // Create trunk
+        for (int i = 0; i < trunkHeight; ++i) {
+            if (!editSession.setBlockIfAir(basePos.add(0, i, 0), logBlock)) {
+                return;
+            }
+        }
+
+        // Move up
+        basePos = basePos.add(0, trunkHeight, 0);
+
+        // Create tree + leaves
+        for (int i = 0; i < height; ++i) {
+            editSession.setBlockIfAir(basePos.add(0, i, 0), logBlock);
+
+            // Less leaves at these levels
+            double chance = ((i == 0 || i == height - 1) ? 0.6 : 1);
+
+            // Inner leaves
+            editSession.setChanceBlockIfAir(basePos.add(-1, i, 0), leavesBlock, chance);
+            editSession.setChanceBlockIfAir(basePos.add(1, i, 0), leavesBlock, chance);
+            editSession.setChanceBlockIfAir(basePos.add(0, i, -1), leavesBlock, chance);
+            editSession.setChanceBlockIfAir(basePos.add(0, i, 1), leavesBlock, chance);
+            editSession.setChanceBlockIfAir(basePos.add(1, i, 1), leavesBlock, chance);
+            editSession.setChanceBlockIfAir(basePos.add(-1, i, 1), leavesBlock, chance);
+            editSession.setChanceBlockIfAir(basePos.add(1, i, -1), leavesBlock, chance);
+            editSession.setChanceBlockIfAir(basePos.add(-1, i, -1), leavesBlock, chance);
+
+            if (!(i == 0 || i == height - 1)) {
+                for (int j = -2; j <= 2; ++j) {
+                    editSession.setChanceBlockIfAir(basePos.add(-2, i, j), leavesBlock, 0.6);
+                }
+                for (int j = -2; j <= 2; ++j) {
+                    editSession.setChanceBlockIfAir(basePos.add(2, i, j), leavesBlock, 0.6);
+                }
+                for (int j = -2; j <= 2; ++j) {
+                    editSession.setChanceBlockIfAir(basePos.add(j, i, -2), leavesBlock, 0.6);
+                }
+                for (int j = -2; j <= 2; ++j) {
+                    editSession.setChanceBlockIfAir(basePos.add(j, i, 2), leavesBlock, 0.6);
+                }
+            }
+        }
+
+        editSession.setBlockIfAir(basePos.add(0, height, 0), leavesBlock);
+    }
+
+    /**
      * Looks up a tree type. May return null if a tree type by that
      * name is not found.
      * 

@@ -19,6 +19,8 @@
 
 package com.sk89q.worldedit.tools;
 
+import com.sk89q.minecraft.util.commands.CommandContext;
+import com.sk89q.minecraft.util.commands.CommandException;
 import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.bags.BlockBag;
 import com.sk89q.worldedit.blocks.BaseBlock;
@@ -28,7 +30,11 @@ import com.sk89q.worldedit.masks.Mask;
 import com.sk89q.worldedit.patterns.Pattern;
 import com.sk89q.worldedit.patterns.SingleBlockPattern;
 import com.sk89q.worldedit.tools.brushes.Brush;
+import com.sk89q.worldedit.tools.brushes.BrushFactory;
 import com.sk89q.worldedit.tools.brushes.SphereBrush;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Builds a shape at the place being looked at.
@@ -36,6 +42,18 @@ import com.sk89q.worldedit.tools.brushes.SphereBrush;
  * @author sk89q
  */
 public class BrushTool implements TraceTool {
+    
+    private static final Map<String, BrushFactory> factoryLookup = new HashMap<String, BrushFactory>();
+    
+    public static BrushTool getBrush(LocalSession session, LocalPlayer player,
+            CommandContext input, WorldEdit we) throws WorldEditException {
+        BrushFactory factory = factoryLookup.get(input.getString(0));
+        BrushTool brush = session.getBrushTool(player.getItemInHand());
+        brush.setBrush(factory.createBrush(), factory.getPermission());
+        brush.parseInput(input, player, session, we);
+        return brush;
+    }
+
     protected static int MAX_RANGE = 500;
     protected int range = -1;
     private Mask mask = null;
@@ -150,7 +168,7 @@ public class BrushTool implements TraceTool {
     /**
      * Set the set brush range.
      * 
-     * @param size
+     * @param range
      */
     public void setRange(int range) {
         this.range = range;
@@ -200,6 +218,37 @@ public class BrushTool implements TraceTool {
         }
 
         return true;
+    }
+    
+    public void parseInput(CommandContext args, LocalPlayer player, LocalSession session,
+           WorldEdit we) throws WorldEditException {
+        // Range
+        if (args.hasFlag('r')) {
+            setRange(args.getFlagInteger('r'));
+        }
+        
+        // Mask
+        if (args.hasFlag('m')) {
+            setMask(we.getBlockMask(player, session, args.getFlag('m')));
+        }
+
+        // Material
+        if (args.hasFlag('t')) {
+            setFill(we.getBlockPattern(player, args.getFlag('t')));
+        }
+
+        // Size
+        if (args.hasFlag('s')) {
+            setSize(args.getFlagDouble('s'));
+        }
+
+        if (brush != null) {
+            try {
+                brush.parseInput(new CommandContext(args.getSlice(1), brush.getValueFlags()), player, session, we);
+            } catch (CommandException e) {
+                throw new WorldEditException(e.getMessage()) {};
+            }
+        }
     }
 
 }

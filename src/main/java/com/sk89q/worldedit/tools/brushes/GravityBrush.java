@@ -18,8 +18,8 @@
 
 package com.sk89q.worldedit.tools.brushes;
 
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.MaxChangedBlocksException;
+import com.sk89q.minecraft.util.commands.CommandContext;
+import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.Vector;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.blocks.BlockID;
@@ -30,22 +30,18 @@ import java.util.*;
 /**
  * @author zml2008
  */
-public class GravityBrush implements Brush {
-    private final boolean fullHeight;
-    
-    public GravityBrush(boolean fullHeight) {
-        this.fullHeight = fullHeight;
-    }
+public class GravityBrush extends Brush {
+    private boolean fullHeight;
 
     @Override
     public void build(EditSession editSession, Vector pos, Pattern mat, double size) throws MaxChangedBlocksException {
         final BaseBlock air = new BaseBlock(BlockID.AIR, 0);
-        final double startY = fullHeight ? editSession.getWorld().getMaxY() : pos.getBlockY() + size;
+        final int startY = fullHeight ? editSession.getWorld().getMaxY() : (int)Math.floor(pos.getBlockY() + size);
         for (double x = pos.getBlockX() + size; x > pos.getBlockX() - size; --x) {
-            for (double z = pos.getBlockZ() + size; z > pos.getBlockZ() - size; --z) {
+            for (int z = (int)Math.floor(pos.getBlockZ() + size); z > (int)Math.floor(pos.getBlockZ() - size); --z) {
                 double y = startY;
                 final List<BaseBlock> blockTypes = new ArrayList<BaseBlock>();
-                for (; y > pos.getBlockY() - size; --y) {
+                for (; y > (int)Math.floor(pos.getBlockY() - size); --y) {
                     final Vector pt = new Vector(x, y, z);
                     final BaseBlock block = editSession.getBlock(pt);
                     if (!block.isAir()) {
@@ -62,6 +58,24 @@ public class GravityBrush implements Brush {
                     pt = pt.add(0, 1, 0);
                 }
             }
+        }
+    }
+
+    @Override
+    public void parseInput(CommandContext args, LocalPlayer player, LocalSession session, WorldEdit we) throws WorldEditException {
+        fullHeight = args.hasFlag('h');
+    }
+
+    public static class Factory implements BrushFactory {
+
+        @Override
+        public Brush createBrush() {
+            return new GravityBrush();
+        }
+
+        @Override
+        public String getPermission() {
+            return "worldedit.brush.gravity";
         }
     }
 }

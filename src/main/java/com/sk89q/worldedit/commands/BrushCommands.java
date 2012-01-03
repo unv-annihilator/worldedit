@@ -51,162 +51,27 @@ public class BrushCommands {
 	}
 
     @Command(
-        aliases = { "sphere", "s" },
-        usage = "<block> [radius]",
-        flags = "h",
-        desc = "Choose the sphere brush",
-        help =
-            "Chooses the sphere brush.\n" +
-            "The -h flag creates hollow spheres instead.",
+        aliases = {"choose"},
+        usage = "[brush]",
+        desc = "Binds the selected brush to your currently held item.",
         min = 1,
-        max = 2
+        max = -1
     )
-    @CommandPermissions("worldedit.brush.sphere")
-    public void sphereBrush(CommandContext args, LocalSession session,
+    public void chooseBrush(CommandContext args, LocalSession session,
             LocalPlayer player, EditSession editSession) throws WorldEditException {
-        
-        LocalConfiguration config = we.getConfiguration();
-
-        double radius = args.argsLength() > 1 ? args.getDouble(1) : 2;
-        if (radius > config.maxBrushRadius) {
-            player.printError("Maximum allowed brush radius: "
-                    + config.maxBrushRadius);
-            return;
-        }
-
-        BrushTool tool = session.getBrushTool(player.getItemInHand());
-        Pattern fill = we.getBlockPattern(player, args.getString(0));
-        tool.setFill(fill);
-        tool.setSize(radius);
-
-        if (args.hasFlag('h')) {
-            tool.setBrush(new HollowSphereBrush(), "worldedit.brush.sphere");
-        } else {
-            tool.setBrush(new SphereBrush(), "worldedit.brush.sphere");
-        }
-
-        player.print(String.format("Sphere brush shape equipped (%.0f).",
-                radius));
+        BrushTool.getBrush(session, player, args, we);
     }
 
     @Command(
-        aliases = { "cylinder", "cyl", "c" },
-        usage = "<block> [radius] [height]",
-        flags = "h",
-        desc = "Choose the cylinder brush",
-        help =
-            "Chooses the cylinder brush.\n" +
-            "The -h flag creates hollow cylinders instead.",
+        aliases = {"configure", "config"},
+        usage = "<brushopts>",
+            desc = "Configure options for brushes.",
         min = 1,
-        max = 3
+        max = -1
     )
-    @CommandPermissions("worldedit.brush.cylinder")
-    public void cylinderBrush(CommandContext args, LocalSession session,
+    public void configureBrush(CommandContext args, LocalSession session,
             LocalPlayer player, EditSession editSession) throws WorldEditException {
-        
-        LocalConfiguration config = we.getConfiguration();
-
-        double radius = args.argsLength() > 1 ? args.getDouble(1) : 2;
-        if (radius > config.maxBrushRadius) {
-            player.printError("Maximum allowed brush radius: "
-                    + config.maxBrushRadius);
-            return;
-        }
-
-        int height = args.argsLength() > 2 ? args.getInteger(2) : 1;
-        if (height > config.maxBrushRadius) {
-            player.printError("Maximum allowed brush radius/height: "
-                    + config.maxBrushRadius);
-            return;
-        }
-
-        BrushTool tool = session.getBrushTool(player.getItemInHand());
-        Pattern fill = we.getBlockPattern(player, args.getString(0));
-        tool.setFill(fill);
-        tool.setSize(radius);
-
-        if (args.hasFlag('h')) {
-            tool.setBrush(new HollowCylinderBrush(height), "worldedit.brush.cylinder");
-        } else {
-            tool.setBrush(new CylinderBrush(height), "worldedit.brush.cylinder");
-        }
-
-        player.print(String.format("Cylinder brush shape equipped (%.0f by %d).",
-                radius, height));
-    }
-
-    @Command(
-        aliases = { "clipboard", "copy" },
-        usage = "",
-        flags = "a",
-        desc = "Choose the clipboard brush",
-        help =
-            "Chooses the clipboard brush.\n" +
-            "The -a flag makes it not paste air.",
-        min = 0,
-        max = 0
-    )
-    @CommandPermissions("worldedit.brush.clipboard")
-    public void clipboardBrush(CommandContext args, LocalSession session,
-            LocalPlayer player, EditSession editSession) throws WorldEditException {
-        
-        LocalConfiguration config = we.getConfiguration();
-
-        CuboidClipboard clipboard = session.getClipboard();
-
-        if (clipboard == null) {
-            player.printError("Copy something first.");
-            return;
-        }
-
-        Vector size = clipboard.getSize();
-
-        if (size.getBlockX() > config.maxBrushRadius
-                || size.getBlockY() > config.maxBrushRadius
-                || size.getBlockZ() > config.maxBrushRadius) {
-            player.printError("Maximum allowed brush radius/height: "
-                    + config.maxBrushRadius);
-            return;
-        }
-
-        BrushTool tool = session.getBrushTool(player.getItemInHand());
-        tool.setBrush(new ClipboardBrush(clipboard, args.hasFlag('a')), "worldedit.brush.clipboard");
-
-        player.print("Clipboard brush shape equipped.");
-    }
-
-    @Command(
-        aliases = { "smooth" },
-        usage = "[size] [iterations]",
-        flags = "n",
-        desc = "Choose the terrain softener brush",
-        help =
-            "Chooses the terrain softener brush.\n" +
-            "The -n flag makes it only consider naturally occuring blocks.",
-        min = 0,
-        max = 2
-    )
-    @CommandPermissions("worldedit.brush.smooth")
-    public void smoothBrush(CommandContext args, LocalSession session,
-            LocalPlayer player, EditSession editSession) throws WorldEditException {
-        
-        LocalConfiguration config = we.getConfiguration();
-
-        double radius = args.argsLength() > 0 ? args.getDouble(0) : 2;
-        if (radius > config.maxBrushRadius) {
-            player.printError("Maximum allowed brush radius: "
-                    + config.maxBrushRadius);
-            return;
-        }
-
-        int iterations = args.argsLength() > 1 ? args.getInteger(1) : 4;
-
-        BrushTool tool = session.getBrushTool(player.getItemInHand());
-        tool.setSize(radius);
-        tool.setBrush(new SmoothBrush(iterations, args.hasFlag('n')), "worldedit.brush.smooth");
-
-        player.print(String.format("Smooth brush equipped (%.0f x %dx, using " + (args.hasFlag('n') ? "natural blocks only" : "any block") + ").",
-                radius, iterations));
+        session.getBrushTool(player.getItemInHand()).parseInput(args, player, session, we);
     }
 
     @Command(
@@ -237,39 +102,6 @@ public class BrushCommands {
         tool.setBrush(new SphereBrush(), "worldedit.brush.ex");
 
         player.print(String.format("Extinguisher equipped (%.0f).",
-                radius));
-    }
-
-    @Command(
-            aliases = { "gravity", "grav" },
-            usage = "[radius]",
-            flags = "h",
-            desc = "Gravity brush",
-            help =
-                "This brush simulates the affect of gravity.\n" +
-                "The -h flag makes it affect blocks starting at the world's max y, " +
-                    "instead of the clicked block's y + radius.",
-            min = 0,
-            max = 1
-    )
-    @CommandPermissions("worldedit.brush.gravity")
-    public void gravityBrush(CommandContext args, LocalSession session,
-                                LocalPlayer player, EditSession editSession) throws WorldEditException {
-
-        LocalConfiguration config = we.getConfiguration();
-
-        double radius = args.argsLength() > 0 ? args.getDouble(0) : 5;
-        if (radius > config.maxBrushRadius) {
-            player.printError("Maximum allowed brush radius: "
-                    + config.maxBrushRadius);
-            return;
-        }
-
-        BrushTool tool = session.getBrushTool(player.getItemInHand());
-        tool.setSize(radius);
-        tool.setBrush(new GravityBrush(args.hasFlag('h')), "worldedit.brush.gravity");
-
-        player.print(String.format("Gravity brush equipped (%.0f).",
                 radius));
     }
 }

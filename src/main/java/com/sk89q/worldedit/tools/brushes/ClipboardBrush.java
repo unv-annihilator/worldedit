@@ -19,23 +19,47 @@
 
 package com.sk89q.worldedit.tools.brushes;
 
-import com.sk89q.worldedit.CuboidClipboard;
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.MaxChangedBlocksException;
-import com.sk89q.worldedit.Vector;
+import com.sk89q.minecraft.util.commands.CommandContext;
+import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.patterns.Pattern;
 
-public class ClipboardBrush implements Brush {
+public class ClipboardBrush extends Brush {
     private CuboidClipboard clipboard;
     private boolean noAir;
 
+    public ClipboardBrush() {
+        super();
+    }
     public ClipboardBrush(CuboidClipboard clipboard, boolean noAir) {
+        super();
         this.clipboard = clipboard;
         this.noAir = noAir;
     }
 
     public void build(EditSession editSession, Vector pos, Pattern mat, double size)
             throws MaxChangedBlocksException {
-        clipboard.place(editSession, pos.subtract(clipboard.getSize().divide(2)), noAir);
+        if (clipboard != null) {
+            clipboard.place(editSession, pos.subtract(clipboard.getSize().divide(2)), noAir);
+        }
+    }
+
+    @Override
+    public void parseInput(CommandContext args, LocalPlayer player,
+            LocalSession session, WorldEdit we) throws WorldEditException {
+        clipboard = session.getClipboard();
+        noAir = args.hasFlag('a');
+    }
+
+    public static class Factory implements BrushFactory {
+
+        @Override
+        public Brush createBrush() {
+            return new ClipboardBrush();
+        }
+
+        @Override
+        public String getPermission() {
+            return "worldedit.brush.clipboard";
+        }
     }
 }

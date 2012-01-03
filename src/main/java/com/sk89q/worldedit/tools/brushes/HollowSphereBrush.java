@@ -19,17 +19,19 @@
 
 package com.sk89q.worldedit.tools.brushes;
 
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.MaxChangedBlocksException;
-import com.sk89q.worldedit.Vector;
+import com.sk89q.minecraft.util.commands.CommandContext;
+import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.patterns.Pattern;
 
-public class HollowSphereBrush implements Brush {
-    public HollowSphereBrush() {
-    }
+public class HollowSphereBrush extends Brush {
 
     public void build(EditSession editSession, Vector pos, Pattern mat, double size)
             throws MaxChangedBlocksException {
         editSession.makeSphere(pos, mat, size, size, size, false);
+    }
+
+    @Override
+    public void parseInput(CommandContext args, LocalPlayer player, LocalSession session, WorldEdit we) throws WorldEditException {
+
     }
 }
