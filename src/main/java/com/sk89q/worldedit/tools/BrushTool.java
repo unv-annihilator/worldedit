@@ -25,6 +25,7 @@ import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.blocks.BlockID;
 import com.sk89q.worldedit.masks.CombinedMask;
 import com.sk89q.worldedit.masks.Mask;
+import com.sk89q.worldedit.operations.Operation;
 import com.sk89q.worldedit.patterns.Pattern;
 import com.sk89q.worldedit.patterns.SingleBlockPattern;
 import com.sk89q.worldedit.tools.brushes.Brush;
@@ -32,7 +33,7 @@ import com.sk89q.worldedit.tools.brushes.SphereBrush;
 
 /**
  * Builds a shape at the place being looked at.
- * 
+ *
  * @author sk89q
  */
 public class BrushTool implements TraceTool {
@@ -46,7 +47,7 @@ public class BrushTool implements TraceTool {
 
     /**
      * Construct the tool.
-     * 
+     *
      * @param permission
      */
     public BrushTool(String permission) {
@@ -56,7 +57,7 @@ public class BrushTool implements TraceTool {
     /**
      * Checks to see if the player can still be using this tool (considering
      * permissions and such).
-     * 
+     *
      * @param player
      * @return
      */
@@ -66,7 +67,7 @@ public class BrushTool implements TraceTool {
 
     /**
      * Get the filter.
-     * 
+     *
      * @return the filter
      */
     public Mask getMask() {
@@ -75,7 +76,7 @@ public class BrushTool implements TraceTool {
 
     /**
      * Set the block filter used for identifying blocks to replace.
-     * 
+     *
      * @param filter the filter to set
      */
     public void setMask(Mask filter) {
@@ -84,9 +85,9 @@ public class BrushTool implements TraceTool {
 
     /**
      * Set the brush.
-     * 
+     *
      * @param brush
-     * @param perm 
+     * @param perm
      */
     public void setBrush(Brush brush, String perm) {
         this.brush = brush;
@@ -95,7 +96,7 @@ public class BrushTool implements TraceTool {
 
     /**
      * Get the current brush.
-     * 
+     *
      * @return
      */
     public Brush getBrush() {
@@ -104,8 +105,8 @@ public class BrushTool implements TraceTool {
 
     /**
      * Set the material.
-     * 
-     * @param material
+     *
+     * @param material The materias to use in this brush
      */
     public void setFill(Pattern material) {
         this.material = material;
@@ -113,7 +114,7 @@ public class BrushTool implements TraceTool {
 
     /**
      * Get the material.
-     * 
+     *
      * @return
      */
     public Pattern getMaterial() {
@@ -122,8 +123,8 @@ public class BrushTool implements TraceTool {
 
     /**
      * Get the set brush size.
-     * 
-     * @return
+     *
+     * @return The radius of the brush
      */
     public double getSize() {
         return size;
@@ -131,8 +132,8 @@ public class BrushTool implements TraceTool {
 
     /**
      * Set the set brush size.
-     * 
-     * @param radius
+     *
+     * @param radius The radius of the brush, in blocks
      */
     public void setSize(double radius) {
         this.size = radius;
@@ -140,17 +141,17 @@ public class BrushTool implements TraceTool {
 
     /**
      * Get the set brush range.
-     * 
-     * @return
+     *
+     * @return The brush's range
      */
     public int getRange() {
         return (range < 0) ? MAX_RANGE : Math.min(range, MAX_RANGE);
     }
 
     /**
-     * Set the set brush range.
-     * 
-     * @param size
+     * Set the brush range.
+     *
+     * @param range The range for the brush
      */
     public void setRange(int range) {
         this.range = range;
@@ -159,7 +160,7 @@ public class BrushTool implements TraceTool {
     /**
      * Perform the action. Should return true to deny the default
      * action.
-     * 
+     *
      * @param player
      * @param session
      * @return true to deny
@@ -190,15 +191,21 @@ public class BrushTool implements TraceTool {
             }
         }
 
+        Operation<Boolean> op = null;
         try {
-            brush.build(editSession, target, material, size);
+            op = brush.build(editSession, target, material, size);
+            return op.run(session, player);
         } catch (MaxChangedBlocksException e) {
             player.printError("Max blocks change limit reached.");
+        } catch (WorldEditException e) {
+            player.printError(e.getMessage());
         } finally {
             if (bag != null) {
                 bag.flushChanges();
             }
-            session.remember(editSession);
+            if (op != null) {
+                session.remember(op);
+            }
         }
 
         return true;

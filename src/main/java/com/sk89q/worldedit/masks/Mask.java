@@ -19,8 +19,8 @@
 
 package com.sk89q.worldedit.masks;
 
-import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.Vector;
+import com.sk89q.worldedit.operations.Operation;
 
 /**
  * Base matcher for the block filtering framework. Implementing classes
@@ -34,10 +34,10 @@ public interface Mask {
      * that position matches the filter. Block information is not provided
      * as getting a BaseBlock has unneeded overhead in most block querying
      * situations (enumerating a chest's contents is a waste, for example).
-     * 
-     * @param editSession 
+     *
+     * @param editSession
      * @param pos
      * @return
      */
-    public boolean matches(EditSession editSession, Vector pos);
+    public boolean matches(Operation editSession, Vector pos);
 }

@@ -27,7 +27,7 @@ import com.sk89q.worldedit.patterns.Pattern;
 
 /**
  * A tool that flood fills blocks.
- * 
+ *
  * @author sk89q
  */
 public class FloodFillTool implements BlockTool {
@@ -65,7 +65,7 @@ public class FloodFillTool implements BlockTool {
         } catch (MaxChangedBlocksException e) {
             player.printError("Max blocks change limit reached.");
         } finally {
-            session.remember(editSession);
+            session.remember(editSession.getPerformedOperations());
         }
 
         return true;
@@ -73,7 +73,7 @@ public class FloodFillTool implements BlockTool {
 
     /**
      * Helper method.
-     * 
+     *
      * @param server
      * @param superPickaxeManyDrop
      * @param world
@@ -88,8 +88,9 @@ public class FloodFillTool implements BlockTool {
             Vector origin, int size, int initialType,
             Set<BlockVector> visited)
             throws MaxChangedBlocksException {
+        final int sizeSq = size * size;
 
-        if (origin.distance(pos) > size || visited.contains(pos)) {
+        if (origin.distanceSq(pos) > sizeSq || visited.contains(pos)) {
             return;
         }
 

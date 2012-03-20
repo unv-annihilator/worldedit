@@ -32,18 +32,19 @@ import com.sk89q.worldedit.expression.ExpressionException;
 import com.sk89q.worldedit.filtering.GaussianKernel;
 import com.sk89q.worldedit.filtering.HeightMapFilter;
 import com.sk89q.worldedit.masks.Mask;
+import com.sk89q.worldedit.operations.SetBlocksOperation;
 import com.sk89q.worldedit.patterns.*;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.regions.RegionOperationException;
 
 /**
  * Region related commands.
- * 
+ *
  * @author sk89q
  */
 public class RegionCommands {
     private final WorldEdit we;
-    
+
     public RegionCommands(WorldEdit we) {
         this.we = we;
     }
@@ -62,16 +63,10 @@ public class RegionCommands {
 
         Pattern pattern = we.getBlockPattern(player, args.getString(0));
 
-        int affected;
+        SetBlocksOperation op = new SetBlocksOperation(editSession, pattern);
+        op.run(session, player);
 
-        if (pattern instanceof SingleBlockPattern) {
-            affected = editSession.setBlocks(session.getSelection(player.getWorld()),
-                    ((SingleBlockPattern) pattern).getBlock());
-        } else {
-            affected = editSession.setBlocks(session.getSelection(player.getWorld()), pattern);
-        }
-
-        player.print(affected + " block(s) have been changed.");
+        player.print(op.getBlockChangeCount() + " block(s) have been changed.");
     }
 
     @Command(
@@ -86,7 +81,7 @@ public class RegionCommands {
     @Logging(REGION)
     public void replace(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         Set<BaseBlock> from;
         Pattern to;
         if (args.argsLength() == 1) {
@@ -184,7 +179,7 @@ public class RegionCommands {
     @Logging(REGION)
     public void faces(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         Pattern pattern = we.getBlockPattern(player, args.getString(0));
         int affected;
         if (pattern instanceof SingleBlockPattern) {
@@ -211,16 +206,16 @@ public class RegionCommands {
     @Logging(REGION)
     public void smooth(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         int iterations = 1;
         if (args.argsLength() > 0) {
             iterations = args.getInteger(0);
         }
 
-        HeightMap heightMap = new HeightMap(editSession, session.getSelection(player.getWorld()), args.hasFlag('n'));
-        HeightMapFilter filter = new HeightMapFilter(new GaussianKernel(5, 1.0));
-        int affected = heightMap.applyFilter(filter, iterations);
-        player.print("Terrain's height map smoothed. " + affected + " block(s) changed.");
+        HeightMap heightMap = new HeightMap(editSession,
+                new HeightMapFilter(new GaussianKernel(5, 1.0)), iterations, args.hasFlag('n'));
+        heightMap.operate(session, player);
+        player.print("Terrain's height map smoothed. " + heightMap.getBlockChangeCount() + " block(s) changed.");
 
     }
 
@@ -329,7 +324,7 @@ public class RegionCommands {
     @Logging(REGION)
     public void regenerateChunk(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         Region region = session.getSelection(player.getWorld());
         Mask mask = session.getMask();
         session.setMask(null);

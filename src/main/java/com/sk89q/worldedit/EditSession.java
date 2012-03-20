@@ -18,7 +18,6 @@
  */
 package com.sk89q.worldedit;
 
-import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
@@ -30,6 +29,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
+
+import com.sk89q.worldedit.operations.Operation;
 import com.sk89q.worldedit.regions.*;
 import com.sk89q.worldedit.util.TreeGenerator;
 import com.sk89q.worldedit.bags.*;
@@ -63,36 +64,6 @@ public class EditSession {
     protected LocalWorld world;
 
     /**
-     * Stores the original blocks before modification.
-     */
-    private DoubleArrayList<BlockVector, BaseBlock> original =
-            new DoubleArrayList<BlockVector, BaseBlock>(true);
-
-    /**
-     * Stores the current blocks.
-     */
-    private DoubleArrayList<BlockVector, BaseBlock> current =
-            new DoubleArrayList<BlockVector, BaseBlock>(false);
-
-    /**
-     * Blocks that should be placed before last.
-     */
-    private DoubleArrayList<BlockVector, BaseBlock> queueAfter =
-            new DoubleArrayList<BlockVector, BaseBlock>(false);
-
-    /**
-     * Blocks that should be placed last.
-     */
-    private DoubleArrayList<BlockVector, BaseBlock> queueLast =
-            new DoubleArrayList<BlockVector, BaseBlock>(false);
-
-    /**
-     * Blocks that should be placed after all other blocks.
-     */
-    private DoubleArrayList<BlockVector, BaseBlock> queueFinal =
-            new DoubleArrayList<BlockVector, BaseBlock>(false);
-
-    /**
      * The maximum number of blocks to change at a time. If this number is
      * exceeded, a MaxChangedBlocksException exception will be raised. -1
      * indicates no limit.
@@ -124,6 +95,8 @@ public class EditSession {
      * Mask to cover operations.
      */
     private Mask mask;
+
+    private final List<Operation> performedOperations = new ArrayList<Operation>();
 
     /**
      * Construct the object with a maximum number of blocks.
@@ -159,337 +132,13 @@ public class EditSession {
     }
 
     /**
-     * Sets a block without changing history.
-     *
-     * @param pt
-     * @param block
-     * @return Whether the block changed
-     */
-    public boolean rawSetBlock(Vector pt, BaseBlock block) {
-        final int y = pt.getBlockY();
-        final int type = block.getType();
-        if (y < 0 || y > world.getMaxY()) {
-            return false;
-        }
-
-        world.checkLoadedChunk(pt);
-
-        // No invalid blocks
-        if (!world.isValidBlockType(type)) {
-            return false;
-        }
-
-        if (mask != null) {
-            if (!mask.matches(this, pt)) {
-                return false;
-            }
-        }
-
-        final int existing = world.getBlockType(pt);
-
-        // Clear the container block so that it doesn't drop items
-        if (BlockType.isContainerBlock(existing) && blockBag == null) {
-            world.clearContainerBlockContents(pt);
-            // Ice turns until water so this has to be done first
-        } else if (existing == BlockID.ICE) {
-            world.setBlockType(pt, BlockID.AIR);
-        }
-
-        if (blockBag != null) {
-            if (type > 0) {
-                try {
-                    blockBag.fetchPlacedBlock(type, 0);
-                } catch (UnplaceableBlockException e) {
-                    return false;
-                } catch (BlockBagException e) {
-                    missingBlocks.add(type);
-                    return false;
-                }
-            }
-
-            if (existing > 0) {
-                try {
-                    blockBag.storeDroppedBlock(existing, world.getBlockData(pt));
-                } catch (BlockBagException e) {
-                }
-            }
-        }
-
-        final boolean result;
-
-        if (world.usesBlockData(type)) {
-            if (fastMode) {
-                result = world.setTypeIdAndDataFast(pt, type, block.getData() > -1 ? block.getData() : 0);
-            } else {
-                result = world.setTypeIdAndData(pt, type, block.getData() > -1 ? block.getData() : 0);
-            }
-        } else {
-            if (fastMode) {
-                result = world.setBlockTypeFast(pt, type);
-            } else {
-                result = world.setBlockType(pt, type);
-            }
-        }
-        //System.out.println(pt + "" +result);
-
-        if (type != 0) {
-            if (block instanceof ContainerBlock) {
-                if (blockBag == null) {
-                    world.copyToWorld(pt, block);
-                }
-            } else if (block instanceof TileEntityBlock) {
-                world.copyToWorld(pt, block);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Sets the block at position x, y, z with a block type. If queue mode is
-     * enabled, blocks may not be actually set in world until flushQueue() is
-     * called.
-     *
-     * @param pt
-     * @param block
-     * @return Whether the block changed -- not entirely dependable
-     * @throws MaxChangedBlocksException
-     */
-    public boolean setBlock(Vector pt, BaseBlock block)
-            throws MaxChangedBlocksException {
-        BlockVector blockPt = pt.toBlockVector();
-
-        // if (!original.containsKey(blockPt)) {
-        original.put(blockPt, getBlock(pt));
-
-        if (maxBlocks != -1 && original.size() > maxBlocks) {
-            throw new MaxChangedBlocksException(maxBlocks);
-        }
-        // }
-
-        current.put(pt.toBlockVector(), block);
-
-        return smartSetBlock(pt, block);
-    }
-
-    /**
-     * Insert a contrived block change into the history.
-     *
-     * @param pt
-     * @param existing
-     * @param block
-     */
-    public void rememberChange(Vector pt, BaseBlock existing, BaseBlock block) {
-        BlockVector blockPt = pt.toBlockVector();
-
-        original.put(blockPt, existing);
-        current.put(pt.toBlockVector(), block);
-    }
-
-    /**
-     * Set a block with a pattern.
-     *
-     * @param pt
-     * @param pat
-     * @return Whether the block changed -- not entirely dependable
-     * @throws MaxChangedBlocksException
-     */
-    public boolean setBlock(Vector pt, Pattern pat)
-            throws MaxChangedBlocksException {
-        return setBlock(pt, pat.next(pt));
-    }
-
-    /**
-     * Set a block only if there's no block already there.
-     *
-     * @param pt
-     * @param block
-     * @return if block was changed
-     * @throws MaxChangedBlocksException
-     */
-    public boolean setBlockIfAir(Vector pt, BaseBlock block)
-            throws MaxChangedBlocksException {
-        if (!getBlock(pt).isAir()) {
-            return false;
-        } else {
-            return setBlock(pt, block);
-        }
-    }
-
-    /**
-     * Actually set the block. Will use queue.
-     *
-     * @param pt
-     * @param block
-     * @return
-     */
-    public boolean smartSetBlock(Vector pt, BaseBlock block) {
-        if (queued) {
-            if (BlockType.shouldPlaceLast(block.getType())) {
-                // Place torches, etc. last
-                queueLast.put(pt.toBlockVector(), block);
-                return !(getBlockType(pt) == block.getType() && getBlockData(pt) == block.getData());
-            } else if (BlockType.shouldPlaceFinal(block.getType())) {
-                // Place signs, reed, etc even later
-                queueFinal.put(pt.toBlockVector(), block);
-                return !(getBlockType(pt) == block.getType() && getBlockData(pt) == block.getData());
-            } else if (BlockType.shouldPlaceLast(getBlockType(pt))) {
-                // Destroy torches, etc. first
-                rawSetBlock(pt, new BaseBlock(BlockID.AIR));
-            } else {
-                queueAfter.put(pt.toBlockVector(), block);
-                return !(getBlockType(pt) == block.getType() && getBlockData(pt) == block.getData());
-            }
-        }
-
-        return rawSetBlock(pt, block);
-    }
-
-    /**
-     * Gets the block type at a position x, y, z.
-     *
-     * @param pt
-     * @return Block type
-     */
-    public BaseBlock getBlock(Vector pt) {
-        // In the case of the queue, the block may have not actually been
-        // changed yet
-        if (queued) {
-            /*
-             * BlockVector blockPt = pt.toBlockVector();
-             *
-             * if (current.containsKey(blockPt)) { return current.get(blockPt);
-             * }
-             */
-        }
-
-        return rawGetBlock(pt);
-    }
-
-    /**
-     * Gets the block type at a position x, y, z.
-     *
-     * @param pt
-     * @return Block type
-     */
-    public int getBlockType(Vector pt) {
-        // In the case of the queue, the block may have not actually been
-        // changed yet
-        if (queued) {
-            /*
-             * BlockVector blockPt = pt.toBlockVector();
-             *
-             * if (current.containsKey(blockPt)) { return current.get(blockPt);
-             * }
-             */
-        }
-
-        return world.getBlockType(pt);
-    }
-
-    public int getBlockData(Vector pt) {
-        // In the case of the queue, the block may have not actually been
-        // changed yet
-        if (queued) {
-            /*
-             * BlockVector blockPt = pt.toBlockVector();
-             *
-             * if (current.containsKey(blockPt)) { return current.get(blockPt);
-             * }
-             */
-        }
-
-        return world.getBlockData(pt);
-    }
-
-    /**
-     * Gets the block type at a position x, y, z.
-     *
-     * @param pt
-     * @return BaseBlock
-     */
-    public BaseBlock rawGetBlock(Vector pt) {
-        world.checkLoadedChunk(pt);
-
-        int type = world.getBlockType(pt);
-        int data = world.getBlockData(pt);
-
-        switch (type) {
-        case BlockID.WALL_SIGN:
-        case BlockID.SIGN_POST: {
-            SignBlock block = new SignBlock(type, data);
-            world.copyFromWorld(pt, block);
-            return block;
-        }
-
-        case BlockID.CHEST: {
-            ChestBlock block = new ChestBlock(data);
-            world.copyFromWorld(pt, block);
-            return block;
-        }
-
-        case BlockID.FURNACE:
-        case BlockID.BURNING_FURNACE: {
-            FurnaceBlock block = new FurnaceBlock(type, data);
-            world.copyFromWorld(pt, block);
-            return block;
-        }
-
-        case BlockID.DISPENSER: {
-            DispenserBlock block = new DispenserBlock(data);
-            world.copyFromWorld(pt, block);
-            return block;
-        }
-
-        case BlockID.MOB_SPAWNER: {
-            MobSpawnerBlock block = new MobSpawnerBlock(data);
-            world.copyFromWorld(pt, block);
-            return block;
-        }
-
-        case BlockID.NOTE_BLOCK: {
-            NoteBlock block = new NoteBlock(data);
-            world.copyFromWorld(pt, block);
-            return block;
-        }
-
-        default:
-            return new BaseBlock(type, data);
-        }
-    }
-
-    /**
-     * Restores all blocks to their initial state.
-     *
-     * @param sess
-     */
-    public void undo(EditSession sess) {
-        for (Map.Entry<BlockVector, BaseBlock> entry : original) {
-            BlockVector pt = (BlockVector) entry.getKey();
-            sess.smartSetBlock(pt, (BaseBlock) entry.getValue());
-        }
-        sess.flushQueue();
-    }
-
-    /**
-     * Sets to new state.
-     *
-     * @param sess
-     */
-    public void redo(EditSession sess) {
-        for (Map.Entry<BlockVector, BaseBlock> entry : current) {
-            BlockVector pt = (BlockVector) entry.getKey();
-            sess.smartSetBlock(pt, (BaseBlock) entry.getValue());
-        }
-        sess.flushQueue();
-    }
-
-    /**
      * Get the number of changed blocks.
      *
      * @return
      */
     public int size() {
-        return original.size();
+        //return original.size();
+        return 0;
     }
 
     /**
@@ -540,6 +189,26 @@ public class EditSession {
         queued = false;
     }
 
+    public BaseBlock getBlock(Vector pt) {
+        return new BaseBlock(world.getBlockType(pt), world.getBlockData(pt));
+    }
+
+    public int getBlockType(Vector pt) {
+        return 0;
+    }
+
+    public boolean setBlock(Vector pt, BaseBlock block) throws MaxChangedBlocksException {
+        return false;
+    }
+
+    public boolean setBlock(Vector pt, Pattern block) {
+        return false;
+    }
+
+    public boolean setBlockIfAir(Vector pt, BaseBlock block) {
+        return false;
+    }
+
     /**
      * Set fast mode.
      *
@@ -556,23 +225,6 @@ public class EditSession {
      */
     public boolean hasFastMode() {
         return fastMode;
-    }
-
-    /**
-     * Set a block by chance.
-     *
-     * @param pos
-     * @param block
-     * @param c 0-1 chance
-     * @return whether a block was changed
-     * @throws MaxChangedBlocksException
-     */
-    public boolean setChanceBlockIfAir(Vector pos, BaseBlock block, double c)
-            throws MaxChangedBlocksException {
-        if (Math.random() <= c) {
-            return setBlockIfAir(pos, block);
-        }
-        return false;
     }
 
     /**
@@ -620,41 +272,6 @@ public class EditSession {
     }
 
     /**
-     * Returns the highest solid 'terrain' block which can occur naturally.
-     *
-     * @param x
-     * @param z
-     * @param minY minimal height
-     * @param maxY maximal height
-     * @param naturalOnly look at natural blocks or all blocks
-     * @return height of highest block found or 'minY'
-     */
-    public int getHighestTerrainBlock(int x, int z, int minY, int maxY) {
-        return getHighestTerrainBlock(x, z, minY, maxY, false);
-    }
-
-    /**
-     * Returns the highest solid 'terrain' block which can occur naturally.
-     *
-     * @param x
-     * @param z
-     * @param minY minimal height
-     * @param maxY maximal height
-     * @param naturalOnly look at natural blocks or all blocks
-     * @return height of highest block found or 'minY'
-     */
-    public int getHighestTerrainBlock(int x, int z, int minY, int maxY, boolean naturalOnly) {
-        for (int y = maxY; y >= minY; --y) {
-            Vector pt = new Vector(x, y, z);
-            int id = getBlockType(pt);
-            if (naturalOnly ? BlockType.isNaturalTerrainBlock(id) : !BlockType.canPassThrough(id)) {
-                return y;
-            }
-        }
-        return minY;
-    }
-
-    /**
      * Gets the list of missing blocks and clears the list for the next
      * operation.
      *
@@ -690,15 +307,6 @@ public class EditSession {
     }
 
     /**
-     * Get the number of blocks changed, including repeated block changes.
-     *
-     * @return
-     */
-    public int getBlockChangeCount() {
-        return original.size();
-    }
-
-    /**
      * Get the mask.
      *
      * @return mask, may be null
@@ -716,323 +324,31 @@ public class EditSession {
         this.mask = mask;
     }
 
-    /**
-     * Finish off the queue.
-     */
+    public void rememberOperation(Operation<?> op) {
+        if (op.getBlockChangeCount() > 0) {
+            performedOperations.add(op);
+        }
+    }
+
+    public Operation<?>[] getPerformedOperations() {
+        return performedOperations.toArray(new Operation<?>[performedOperations.size()]);
+    }
+
     public void flushQueue() {
-        if (!queued) {
-            return;
+        for (Operation op : performedOperations) {
+            op.flushQueue();
         }
-
-        final Set<BlockVector2D> dirtyChunks = new HashSet<BlockVector2D>();
-
-        for (Map.Entry<BlockVector, BaseBlock> entry : queueAfter) {
-            BlockVector pt = (BlockVector) entry.getKey();
-            rawSetBlock(pt, (BaseBlock) entry.getValue());
-
-            // TODO: use ChunkStore.toChunk(pt) after optimizing it.
-            if (fastMode) {
-                dirtyChunks.add(new BlockVector2D(pt.getBlockX() >> 4, pt.getBlockZ() >> 4));
-            }
-        }
-
-        // We don't want to place these blocks if other blocks were missing
-        // because it might cause the items to drop
-        if (blockBag == null || missingBlocks.size() == 0) {
-            for (Map.Entry<BlockVector, BaseBlock> entry : queueLast) {
-                BlockVector pt = (BlockVector) entry.getKey();
-                rawSetBlock(pt, (BaseBlock) entry.getValue());
-
-                // TODO: use ChunkStore.toChunk(pt) after optimizing it.
-                if (fastMode) {
-                    dirtyChunks.add(new BlockVector2D(pt.getBlockX() >> 4, pt.getBlockZ() >> 4));
-                }
-            }
-
-            final Set<BlockVector> blocks = new HashSet<BlockVector>();
-            final Map<BlockVector, BaseBlock> blockTypes = new HashMap<BlockVector, BaseBlock>();
-            for (Map.Entry<BlockVector, BaseBlock> entry : queueFinal) {
-                final BlockVector pt = entry.getKey();
-                blocks.add(pt);
-                blockTypes.put(pt, entry.getValue());
-            }
-
-            while (!blocks.isEmpty()) {
-                BlockVector current = blocks.iterator().next();
-                if (!blocks.contains(current)) {
-                    continue;
-                }
-
-                final Deque<BlockVector> walked = new LinkedList<BlockVector>();
-
-                while (true) {
-                    walked.addFirst(current);
-
-                    assert(blockTypes.containsKey(current));
-
-                    final BaseBlock baseBlock = blockTypes.get(current);
-
-                    final int type = baseBlock.getType();
-                    final int data = baseBlock.getData();
-
-                    switch (type) {
-                    case BlockID.WOODEN_DOOR:
-                    case BlockID.IRON_DOOR:
-                        if ((data & 0x8) == 0) {
-                            // Deal with lower door halves being attached to the floor AND the upper half
-                            BlockVector upperBlock = current.add(0, 1, 0).toBlockVector();
-                            if (blocks.contains(upperBlock) && !walked.contains(upperBlock)) {
-                                walked.addFirst(upperBlock);
-                            }
-                        }
-                    }
-
-                    final PlayerDirection attachment = BlockType.getAttachment(type, data);
-                    if (attachment == null) {
-                        // Block is not attached to anything => we can place it
-                        break;
-                    }
-
-                    current = current.add(attachment.vector()).toBlockVector();
-
-                    if (!blocks.contains(current)) {
-                        // We ran outside the remaing set => assume we can place blocks on this
-                        break;
-                    }
-
-                    if (walked.contains(current)) {
-                        // Cycle detected => This will most likely go wrong, but there's nothing we can do about it.
-                        break;
-                    }
-                }
-
-                for (BlockVector pt : walked) {
-                    rawSetBlock(pt, blockTypes.get(pt));
-                    blocks.remove(pt);
-
-                    // TODO: use ChunkStore.toChunk(pt) after optimizing it.
-                    if (fastMode) {
-                        dirtyChunks.add(new BlockVector2D(pt.getBlockX() >> 4, pt.getBlockZ() >> 4));
-                    }
-                }
-            }
-        }
-
-        if (!dirtyChunks.isEmpty()) world.fixAfterFastMode(dirtyChunks);
-
-        queueAfter.clear();
-        queueLast.clear();
-        queueFinal.clear();
+        performedOperations.clear();
     }
 
-    /**
-     * Fills an area recursively in the X/Z directions.
-     *
-     * @param origin
-     * @param block
-     * @param radius
-     * @param depth
-     * @param recursive
-     * @return number of blocks affected
-     * @throws MaxChangedBlocksException
-     */
-    public int fillXZ(Vector origin, BaseBlock block, double radius, int depth,
-            boolean recursive) throws MaxChangedBlocksException {
-
-        int affected = 0;
-        int originX = origin.getBlockX();
-        int originY = origin.getBlockY();
-        int originZ = origin.getBlockZ();
-
-        HashSet<BlockVector> visited = new HashSet<BlockVector>();
-        Stack<BlockVector> queue = new Stack<BlockVector>();
-
-        queue.push(new BlockVector(originX, originY, originZ));
-
-        while (!queue.empty()) {
-            BlockVector pt = queue.pop();
-            int cx = pt.getBlockX();
-            int cy = pt.getBlockY();
-            int cz = pt.getBlockZ();
-
-            if (cy < 0 || cy > originY || visited.contains(pt)) {
-                continue;
-            }
-
-            visited.add(pt);
-
-            if (recursive) {
-                if (origin.distance(pt) > radius) {
-                    continue;
-                }
-
-                if (getBlock(pt).isAir()) {
-                    if (setBlock(pt, block)) {
-                        ++affected;
-                    }
-                } else {
-                    continue;
-                }
-
-                queue.push(new BlockVector(cx, cy - 1, cz));
-                queue.push(new BlockVector(cx, cy + 1, cz));
-            } else {
-                double dist = Math.sqrt(Math.pow(originX - cx, 2)
-                        + Math.pow(originZ - cz, 2));
-                int minY = originY - depth + 1;
-
-                if (dist > radius) {
-                    continue;
-                }
-
-                if (getBlock(pt).isAir()) {
-                    affected += fillY(cx, originY, cz, block, minY);
-                } else {
-                    continue;
-                }
-            }
-
-            queue.push(new BlockVector(cx + 1, cy, cz));
-            queue.push(new BlockVector(cx - 1, cy, cz));
-            queue.push(new BlockVector(cx, cy, cz + 1));
-            queue.push(new BlockVector(cx, cy, cz - 1));
-        }
-
-        return affected;
-    }
-
-    /**
-     * Recursively fills a block and below until it hits another block.
-     *
-     * @param x
-     * @param cy
-     * @param z
-     * @param block
-     * @param minY
-     * @throws MaxChangedBlocksException
-     * @return
-     */
-    private int fillY(int x, int cy, int z, BaseBlock block, int minY)
-            throws MaxChangedBlocksException {
-        int affected = 0;
-
-        for (int y = cy; y >= minY; --y) {
-            Vector pt = new Vector(x, y, z);
-
-            if (getBlock(pt).isAir()) {
-                setBlock(pt, block);
-                ++affected;
-            } else {
-                break;
+    public int getBlockChangeCount() {
+        int total = 0;
+        if (performedOperations.size() > 0) {
+            for (Operation op : performedOperations) {
+                total += op.getBlockChangeCount();
             }
         }
-
-        return affected;
-    }
-
-    /**
-     * Fills an area recursively in the X/Z directions.
-     *
-     * @param origin
-     * @param pattern
-     * @param radius
-     * @param depth
-     * @param recursive
-     * @return number of blocks affected
-     * @throws MaxChangedBlocksException
-     */
-    public int fillXZ(Vector origin, Pattern pattern, double radius, int depth,
-            boolean recursive) throws MaxChangedBlocksException {
-
-        int affected = 0;
-        int originX = origin.getBlockX();
-        int originY = origin.getBlockY();
-        int originZ = origin.getBlockZ();
-
-        HashSet<BlockVector> visited = new HashSet<BlockVector>();
-        Stack<BlockVector> queue = new Stack<BlockVector>();
-
-        queue.push(new BlockVector(originX, originY, originZ));
-
-        while (!queue.empty()) {
-            BlockVector pt = queue.pop();
-            int cx = pt.getBlockX();
-            int cy = pt.getBlockY();
-            int cz = pt.getBlockZ();
-
-            if (cy < 0 || cy > originY || visited.contains(pt)) {
-                continue;
-            }
-
-            visited.add(pt);
-
-            if (recursive) {
-                if (origin.distance(pt) > radius) {
-                    continue;
-                }
-
-                if (getBlock(pt).isAir()) {
-                    if (setBlock(pt, pattern.next(pt))) {
-                        ++affected;
-                    }
-                } else {
-                    continue;
-                }
-
-                queue.push(new BlockVector(cx, cy - 1, cz));
-                queue.push(new BlockVector(cx, cy + 1, cz));
-            } else {
-                double dist = Math.sqrt(Math.pow(originX - cx, 2)
-                        + Math.pow(originZ - cz, 2));
-                int minY = originY - depth + 1;
-
-                if (dist > radius) {
-                    continue;
-                }
-
-                if (getBlock(pt).isAir()) {
-                    affected += fillY(cx, originY, cz, pattern, minY);
-                } else {
-                    continue;
-                }
-            }
-
-            queue.push(new BlockVector(cx + 1, cy, cz));
-            queue.push(new BlockVector(cx - 1, cy, cz));
-            queue.push(new BlockVector(cx, cy, cz + 1));
-            queue.push(new BlockVector(cx, cy, cz - 1));
-        }
-
-        return affected;
-    }
-
-    /**
-     * Recursively fills a block and below until it hits another block.
-     *
-     * @param x
-     * @param cy
-     * @param z
-     * @param pattern
-     * @param minY
-     * @throws MaxChangedBlocksException
-     * @return
-     */
-    private int fillY(int x, int cy, int z, Pattern pattern, int minY)
-            throws MaxChangedBlocksException {
-        int affected = 0;
-
-        for (int y = cy; y >= minY; --y) {
-            Vector pt = new Vector(x, y, z);
-
-            if (getBlock(pt).isAir()) {
-                setBlock(pt, pattern.next(pt));
-                ++affected;
-            } else {
-                break;
-            }
-        }
-
-        return affected;
+        return total;
     }
 
     /**
@@ -1136,98 +452,6 @@ public class EditSession {
                             ++affected;
                         }
                     }
-                }
-            }
-        }
-
-        return affected;
-    }
-
-    /**
-     * Sets all the blocks inside a region to a certain block type.
-     *
-     * @param region
-     * @param block
-     * @return number of blocks affected
-     * @throws MaxChangedBlocksException
-     */
-    public int setBlocks(Region region, BaseBlock block)
-            throws MaxChangedBlocksException {
-        int affected = 0;
-
-        if (region instanceof CuboidRegion) {
-            // Doing this for speed
-            Vector min = region.getMinimumPoint();
-            Vector max = region.getMaximumPoint();
-
-            int minX = min.getBlockX();
-            int minY = min.getBlockY();
-            int minZ = min.getBlockZ();
-            int maxX = max.getBlockX();
-            int maxY = max.getBlockY();
-            int maxZ = max.getBlockZ();
-
-            for (int x = minX; x <= maxX; ++x) {
-                for (int y = minY; y <= maxY; ++y) {
-                    for (int z = minZ; z <= maxZ; ++z) {
-                        Vector pt = new Vector(x, y, z);
-
-                        if (setBlock(pt, block)) {
-                            ++affected;
-                        }
-                    }
-                }
-            }
-        } else {
-            for (Vector pt : region) {
-                if (setBlock(pt, block)) {
-                    ++affected;
-                }
-            }
-        }
-
-        return affected;
-    }
-
-    /**
-     * Sets all the blocks inside a region to a certain block type.
-     *
-     * @param region
-     * @param pattern
-     * @return number of blocks affected
-     * @throws MaxChangedBlocksException
-     */
-    public int setBlocks(Region region, Pattern pattern)
-            throws MaxChangedBlocksException {
-        int affected = 0;
-
-        if (region instanceof CuboidRegion) {
-            // Doing this for speed
-            Vector min = region.getMinimumPoint();
-            Vector max = region.getMaximumPoint();
-
-            int minX = min.getBlockX();
-            int minY = min.getBlockY();
-            int minZ = min.getBlockZ();
-            int maxX = max.getBlockX();
-            int maxY = max.getBlockY();
-            int maxZ = max.getBlockZ();
-
-            for (int x = minX; x <= maxX; ++x) {
-                for (int y = minY; y <= maxY; ++y) {
-                    for (int z = minZ; z <= maxZ; ++z) {
-                        Vector pt = new Vector(x, y, z);
-
-                        if (setBlock(pt, pattern.next(pt))) {
-                            ++affected;
-                        }
-                    }
-                }
-            }
-        } else {
-            for (Vector pt : region) {
-                if (setBlock(pt, pattern.next(pt))) {
-                    ++affected;
                 }
             }
         }
@@ -1582,7 +806,7 @@ public class EditSession {
      * Make walls of the region (as if it was a cuboid if it's not).
      *
      * @param region
-     * @param block
+     * @param pattern
      * @return number of blocks affected
      * @throws MaxChangedBlocksException
      */
@@ -2788,7 +2012,7 @@ public class EditSession {
      * @param region the region to hollow out.
      * @param thickness the thickness of the shell to leave (manhattan distance)
      * @param pattern The block pattern to use
-     *
+<
      * @return number of blocks affected
      * @throws MaxChangedBlocksException
      */

@@ -30,6 +30,7 @@ import java.util.zip.ZipEntry;
 
 import com.sk89q.util.yaml.YAMLProcessor;
 import com.sk89q.wepif.PermissionsResolverManager;
+import com.sk89q.worldedit.operations.Operation;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -236,7 +237,7 @@ public class WorldEditPlugin extends JavaPlugin {
         LocalPlayer wePlayer = wrapPlayer(player);
         LocalSession session = controller.getSession(wePlayer);
 
-        session.remember(editSession);
+        session.remember(editSession.getPerformedOperations());
         editSession.flushQueue();
 
         controller.flushBlockBag(wePlayer, editSession);
@@ -249,14 +250,14 @@ public class WorldEditPlugin extends JavaPlugin {
      * @param op
      * @throws Throwable
      */
-    public void perform(Player player, WorldEditOperation op)
+    public void perform(Player player, Operation op)
             throws Throwable {
         LocalPlayer wePlayer = wrapPlayer(player);
         LocalSession session = controller.getSession(wePlayer);
 
         EditSession editSession = createEditSession(player);
         try {
-            op.run(session, wePlayer, editSession);
+            op.run(session, wePlayer);
         } finally {
             remember(player, editSession);
         }

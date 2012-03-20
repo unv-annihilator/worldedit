@@ -23,15 +23,16 @@ import com.sk89q.minecraft.util.commands.Command;
 import com.sk89q.minecraft.util.commands.CommandContext;
 import com.sk89q.minecraft.util.commands.CommandPermissions;
 import com.sk89q.worldedit.*;
+import com.sk89q.worldedit.operations.Operation;
 
 /**
  * History little commands.
- * 
+ *
  * @author sk89q
  */
 public class HistoryCommands {
     private final WorldEdit we;
-    
+
     public HistoryCommands(WorldEdit we) {
         this.we = we;
     }
@@ -46,10 +47,10 @@ public class HistoryCommands {
     @CommandPermissions("worldedit.history.undo")
     public void undo(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         int times = Math.max(1, args.getInteger(0, 1));
         for (int i = 0; i < times; ++i) {
-            EditSession undone;
+            Operation<?> undone;
             if (args.argsLength() < 2) {
                 undone = session.undo(session.getBlockBag(player));
             } else {
@@ -63,7 +64,7 @@ public class HistoryCommands {
             }
             if (undone != null) {
                 player.print("Undo successful.");
-                we.flushBlockBag(player, undone);
+                we.flushBlockBag(player, undone.getEditSession());
             } else {
                 player.printError("Nothing left to undo.");
                 break;
@@ -81,11 +82,11 @@ public class HistoryCommands {
     @CommandPermissions("worldedit.history.redo")
     public void redo(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         int times = Math.max(1, args.getInteger(0, 1));
 
         for (int i = 0; i < times; ++i) {
-            EditSession redone;
+            Operation<?> redone;
             if (args.argsLength() < 2) {
                 redone = session.redo(session.getBlockBag(player));
             } else {
@@ -99,7 +100,7 @@ public class HistoryCommands {
             }
             if (redone != null) {
                 player.print("Redo successful.");
-                we.flushBlockBag(player, redone);
+                we.flushBlockBag(player, redone.getEditSession());
             } else {
                 player.printError("Nothing left to redo.");
             }

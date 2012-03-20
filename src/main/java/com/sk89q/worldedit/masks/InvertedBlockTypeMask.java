@@ -20,8 +20,9 @@
 package com.sk89q.worldedit.masks;
 
 import java.util.Set;
-import com.sk89q.worldedit.EditSession;
+
 import com.sk89q.worldedit.Vector;
+import com.sk89q.worldedit.operations.Operation;
 
 /**
  * A block type mask that only matches blocks that are not in the list.
@@ -47,7 +48,7 @@ public class InvertedBlockTypeMask extends BlockTypeMask {
     }
 
     @Override
-    public boolean matches(EditSession editSession, Vector pos) {
+    public boolean matches(Operation editSession, Vector pos) {
         return !types.contains(editSession.getBlockType(pos));
     }
 

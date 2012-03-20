@@ -1261,7 +1261,7 @@ public class WorldEdit {
                 player.printError("Command could not be handled; invalid sender!");
                 return false;
             } finally {
-                session.remember(editSession);
+                session.remember(editSession.getPerformedOperations());
                 editSession.flushQueue();
 
                 if (config.profile) {
@@ -1437,13 +1437,13 @@ public class WorldEdit {
         } finally {
             for (EditSession editSession : scriptContext.getEditSessions()) {
                 editSession.flushQueue();
-                session.remember(editSession);
+                session.remember(editSession.getPerformedOperations());
             }
         }
     }
 
     /**
-     * Get Worldedit's configuration.
+     * Get WorldEdit's configuration.
      *
      * @return
      */

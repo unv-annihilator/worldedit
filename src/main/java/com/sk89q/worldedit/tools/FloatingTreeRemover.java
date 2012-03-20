@@ -85,7 +85,7 @@ public class FloatingTreeRemover implements BlockTool {
         } catch (MaxChangedBlocksException e) {
             player.printError("Max blocks change limit reached.");
         } finally {
-            session.remember(editSession);
+            session.remember(editSession.getPerformedOperations());
         }
 
         return true;

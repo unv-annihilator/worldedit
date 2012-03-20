@@ -56,7 +56,7 @@ public class TrueZipMcRegionChunkStore extends McRegionChunkStore {
      * @param zipFile
      * @param folder
      * @throws IOException
-     * @throws ZipException 
+     * @throws ZipException
      */
     public TrueZipMcRegionChunkStore(File zipFile, String folder)
             throws IOException, ZipException {
@@ -143,7 +143,7 @@ public class TrueZipMcRegionChunkStore extends McRegionChunkStore {
 
     /**
      * Get an entry from the ZIP, trying both types of slashes.
-     * 
+     *
      * @param file
      * @return
      */
@@ -172,7 +172,7 @@ public class TrueZipMcRegionChunkStore extends McRegionChunkStore {
 
             ZipEntry testEntry = e.nextElement();
 
-            if (testEntry.getName().matches(".*\\.mcr$") || testEntry.getName().matches(".*\\.mca$")) { // TODO: does this need a separate class?
+            if (testEntry.getName().matches(".*\\.mc[ra]$")) { // TODO: does this need a separate class?
                 return true;
             }
         }

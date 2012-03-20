@@ -34,13 +34,14 @@ import static com.sk89q.minecraft.util.commands.Logging.LogMode.*;
 import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.LocalWorld.KillFlags;
 import com.sk89q.worldedit.blocks.BaseBlock;
+import com.sk89q.worldedit.operations.FillXZOperation;
 import com.sk89q.worldedit.patterns.*;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
 
 /**
  * Utility commands.
- * 
+ *
  * @author sk89q
  */
 public class UtilityCommands {
@@ -67,16 +68,9 @@ public class UtilityCommands {
         we.checkMaxRadius(radius);
         int depth = args.argsLength() > 2 ? Math.max(1, args.getInteger(2)) : 1;
 
-        Vector pos = session.getPlacementPosition(player);
-        int affected = 0;
-        if (pattern instanceof SingleBlockPattern) {
-            affected = editSession.fillXZ(pos,
-                    ((SingleBlockPattern) pattern).getBlock(),
-                    radius, depth, false);
-        } else {
-            affected = editSession.fillXZ(pos, pattern, radius, depth, false);
-        }
-        player.print(affected + " block(s) have been created.");
+        FillXZOperation op = new FillXZOperation(editSession, pattern, radius, depth, false);
+        op.run(session, player);
+        player.print(op.getBlockChangeCount() + " block(s) have been created.");
     }
 
     @Command(
@@ -96,16 +90,9 @@ public class UtilityCommands {
         we.checkMaxRadius(radius);
         int depth = args.argsLength() > 2 ? Math.max(1, args.getInteger(2)) : 1;
 
-        Vector pos = session.getPlacementPosition(player);
-        int affected = 0;
-        if (pattern instanceof SingleBlockPattern) {
-            affected = editSession.fillXZ(pos,
-                    ((SingleBlockPattern) pattern).getBlock(),
-                    radius, depth, true);
-        } else {
-            affected = editSession.fillXZ(pos, pattern, radius, depth, true);
-        }
-        player.print(affected + " block(s) have been created.");
+        FillXZOperation op = new FillXZOperation(editSession, pattern, radius, depth, true);
+        op.run(session, player);
+        player.print(op.getBlockChangeCount() + " block(s) have been created.");
     }
 
     @Command(
@@ -176,7 +163,7 @@ public class UtilityCommands {
     @Logging(PLACEMENT)
     public void removeAbove(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         int size = args.argsLength() > 0 ? Math.max(1, args.getInteger(0)) : 1;
         we.checkMaxRadius(size);
         LocalWorld world = player.getWorld();
@@ -240,7 +227,7 @@ public class UtilityCommands {
     @Logging(PLACEMENT)
     public void replaceNear(CommandContext args, LocalSession session, LocalPlayer player,
             EditSession editSession) throws WorldEditException {
-        
+
         int size = Math.max(1, args.getInteger(0));
         int affected;
         Set<BaseBlock> from;

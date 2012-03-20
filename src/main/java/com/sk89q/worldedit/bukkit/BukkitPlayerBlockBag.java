@@ -40,7 +40,7 @@ public class BukkitPlayerBlockBag extends BlockBag {
 
     /**
      * Construct the object.
-     * 
+     *
      * @param player
      */
     public BukkitPlayerBlockBag(Player player) {
@@ -58,7 +58,7 @@ public class BukkitPlayerBlockBag extends BlockBag {
 
     /**
      * Get the player.
-     * 
+     *
      * @return
      */
     public Player getPlayer() {
@@ -68,7 +68,7 @@ public class BukkitPlayerBlockBag extends BlockBag {
     /**
      * Get a block.
      *
-     * @param id
+     * @param item
      */
     @Override
     public void fetchItem(BaseItem item) throws BlockBagException {
@@ -127,8 +127,8 @@ public class BukkitPlayerBlockBag extends BlockBag {
 
     /**
      * Store a block.
-     * 
-     * @param id
+     *
+     * @param item
      */
     @Override
     public void storeItem(BaseItem item) throws BlockBagException {
@@ -190,7 +190,7 @@ public class BukkitPlayerBlockBag extends BlockBag {
         }
 
         if (freeSlot > -1) {
-            items[freeSlot] = new ItemStack(id, amount);
+            items[freeSlot] = new ItemStack(id, amount, (short)damage);
             return;
         }
 

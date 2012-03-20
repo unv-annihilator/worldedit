@@ -22,14 +22,15 @@ package com.sk89q.worldedit.tools;
 import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.blocks.BlockID;
+import com.sk89q.worldedit.operations.VectorOperation;
 
 /**
  * A super pickaxe mode that will remove blocks in an area.
- * 
+ *
  * @author sk89q
  */
 public class AreaPickaxe implements BlockTool {
-    private static final BaseBlock air = new BaseBlock(0);
+    private static final BaseBlock AIR = new BaseBlock(BlockID.AIR);
     private int range;
 
     public AreaPickaxe(int range) {
@@ -40,13 +41,10 @@ public class AreaPickaxe implements BlockTool {
         return player.hasPermission("worldedit.superpickaxe.area");
     }
 
-    public boolean actPrimary(ServerInterface server, LocalConfiguration config,
-            LocalPlayer player, LocalSession session, WorldVector clicked) {
-        LocalWorld world = clicked.getWorld();
-        int ox = clicked.getBlockX();
-        int oy = clicked.getBlockY();
-        int oz = clicked.getBlockZ();
-        int initialType = world.getBlockType(clicked);
+    public boolean actPrimary(final ServerInterface server, final LocalConfiguration config,
+            LocalPlayer player, LocalSession session, final WorldVector clicked) {
+        final LocalWorld world = clicked.getWorld();
+        final int initialType = world.getBlockType(clicked);
 
         if (initialType == 0) {
             return true;
@@ -57,29 +55,46 @@ public class AreaPickaxe implements BlockTool {
         }
 
         EditSession editSession = session.createEditSession(player);
+        VectorOperation<Boolean> op = new VectorOperation<Boolean>(editSession) {
 
-        try {
-            for (int x = ox - range; x <= ox + range; ++x) {
-                for (int y = oy - range; y <= oy + range; ++y) {
-                    for (int z = oz - range; z <= oz + range; ++z) {
-                        Vector pos = new Vector(x, y, z);
-                        if (world.getBlockType(pos) != initialType) {
-                            continue;
+            @Override
+            public void updateValues(LocalSession session, LocalPlayer player) {
+                point = clicked;
+            }
+
+            @Override
+            protected Boolean operate(LocalSession session, LocalPlayer player) throws MaxChangedBlocksException {
+                int ox = getPoint().getBlockX();
+                int oy = getPoint().getBlockY();
+                int oz = getPoint().getBlockZ();
+                for (int x = ox - range; x <= ox + range; ++x) {
+                    for (int y = oy - range; y <= oy + range; ++y) {
+                        for (int z = oz - range; z <= oz + range; ++z) {
+                            Vector pos = new Vector(x, y, z);
+                            if (getBlockType(pos) != initialType) {
+                                continue;
+                            }
+                            if (config.superPickaxeManyDrop) {
+                                getWorld().simulateBlockMine(pos);
+                            }
+
+                            getWorld().queueBlockBreakEffect(server, pos, initialType, getPoint().distanceSq(pos));
+
+                            setBlock(pos, AIR);
                         }
-                        if (config.superPickaxeManyDrop) {
-                            world.simulateBlockMine(pos);
-                        }
-
-                        world.queueBlockBreakEffect(server, pos, initialType, clicked.distanceSq(pos));
-
-                        editSession.setBlock(pos, air);
                     }
                 }
+                return true;
             }
+        };
+
+        try {
+            op.run(session, player);
         } catch (MaxChangedBlocksException e) {
             player.printError("Max blocks change limit reached.");
+        } catch (WorldEditException nowaythiscanhappen) {
         } finally {
-            session.remember(editSession);
+            session.remember(op);
         }
 
         return true;

@@ -26,7 +26,7 @@ import com.sk89q.worldedit.blocks.BlockType;
 
 /**
  * A mode that replaces one block.
- * 
+ *
  * @author sk89q
  */
 public class BlockReplacer implements DoubleActionBlockTool {
@@ -55,7 +55,7 @@ public class BlockReplacer implements DoubleActionBlockTool {
             if (bag != null) {
                 bag.flushChanges();
             }
-            session.remember(editSession);
+            //session.remember(editSession);
         }
 
         return true;

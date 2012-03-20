@@ -28,6 +28,9 @@ import com.sk89q.jchronic.Chronic;
 import com.sk89q.jchronic.Options;
 import com.sk89q.jchronic.utils.Span;
 import com.sk89q.jchronic.utils.Time;
+import com.sk89q.worldedit.operations.Operation;
+import com.sk89q.worldedit.operations.RedoOperation;
+import com.sk89q.worldedit.operations.UndoOperation;
 import com.sk89q.worldedit.snapshots.Snapshot;
 import com.sk89q.worldedit.tools.BrushTool;
 import com.sk89q.worldedit.tools.SinglePickaxe;
@@ -58,7 +61,7 @@ public class LocalSession {
     private long expirationTime = 0;
     private RegionSelector selector = new CuboidRegionSelector();
     private boolean placeAtPos1 = false;
-    private LinkedList<EditSession> history = new LinkedList<EditSession>();
+    private LinkedList<Operation<?>> history = new LinkedList<Operation<?>>();
     private int historyPointer = 0;
     private CuboidClipboard clipboard;
     private boolean toolControl = true;
@@ -115,39 +118,52 @@ public class LocalSession {
      * Remember an edit session for the undo history. If the history maximum
      * size is reached, old edit sessions will be discarded.
      *
-     * @param editSession
+     * @param ops
      */
-    public void remember(EditSession editSession) {
+    public void remember(Operation<?>... ops) {
         // Don't store anything if no changes were made
-        if (editSession.size() == 0) return;
+        if (ops.length == 0) return;
 
         // Destroy any sessions after this undo point
         while (historyPointer < history.size()) {
             history.remove(historyPointer);
         }
-        history.add(editSession);
-        while (history.size() > MAX_HISTORY_SIZE) {
-            history.remove(0);
+
+        for (Operation<?> op : ops) {
+            history.add(op);
+            while (history.size() > MAX_HISTORY_SIZE) {
+                history.remove(0);
+            }
+            historyPointer = history.size();
         }
-        historyPointer = history.size();
+    }
+
+    public Operation<?> undo(BlockBag newBlockBag) {
+        return undo(newBlockBag, 1);
     }
 
     /**
      * Performs an undo.
      *
-     * @param newBlockBag
-     * @return whether anything was undone
+     * @param newBlockBag The block bag to use when performing undos
+     * @param steps How far back to go in the history list
+     * @return An Operation in which the changes were undone
      */
-    public EditSession undo(BlockBag newBlockBag) {
+    public Operation<?> undo(BlockBag newBlockBag, int steps) {
         --historyPointer;
         if (historyPointer >= 0) {
-            EditSession editSession = history.get(historyPointer);
+            Operation<?> operation = history.get(historyPointer);
             EditSession newEditSession =
-                    new EditSession(editSession.getWorld(), -1, newBlockBag);
+                    new EditSession(operation.getWorld(), -1, newBlockBag);
             newEditSession.enableQueue();
             newEditSession.setFastMode(fastMode);
-            editSession.undo(newEditSession);
-            return editSession;
+            try {
+                new UndoOperation(newEditSession, operation).run(this, null);
+            } catch (WorldEditException e) {
+                // Not thrown
+            }
+            newEditSession.flushQueue();
+            return operation;
         } else {
             historyPointer = 0;
             return null;
@@ -160,14 +176,19 @@ public class LocalSession {
      * @param newBlockBag
      * @return whether anything was redone
      */
-    public EditSession redo(BlockBag newBlockBag) {
+    public Operation<?> redo(BlockBag newBlockBag) {
         if (historyPointer < history.size()) {
-            EditSession editSession = history.get(historyPointer);
+            Operation<?> editSession = history.get(historyPointer);
             EditSession newEditSession =
                     new EditSession(editSession.getWorld(), -1, newBlockBag);
             newEditSession.enableQueue();
             newEditSession.setFastMode(fastMode);
-            editSession.redo(newEditSession);
+            try {
+                new RedoOperation(newEditSession, editSession).run(this, null);
+            } catch (WorldEditException e) {
+                // TODO: Improve exception handling
+            }
+            newEditSession.flushQueue();
             ++historyPointer;
             return editSession;
         }
@@ -584,7 +605,7 @@ public class LocalSession {
 
         }
     }
-    
+
     public void describeCUI(LocalPlayer player) {
         if (!hasCUISupport) {
             return;
@@ -622,8 +643,8 @@ public class LocalSession {
 
     /**
      * Gets the client's CUI protocol version
-     * 
-     * @return 
+     *
+     * @return
      */
     public int getCUIVersion() {
         return cuiVersion;
@@ -631,8 +652,8 @@ public class LocalSession {
 
     /**
      * Sets the client's CUI protocol version
-     * 
-     * @param CUIVersion 
+     *
+     * @param CUIVersion
      */
     public void setCUIVersion(int CUIVersion) {
         this.cuiVersion = CUIVersion;

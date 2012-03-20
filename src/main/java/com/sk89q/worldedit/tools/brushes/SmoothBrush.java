@@ -21,11 +21,14 @@ package com.sk89q.worldedit.tools.brushes;
 
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.HeightMap;
+import com.sk89q.worldedit.LocalPlayer;
+import com.sk89q.worldedit.LocalSession;
 import com.sk89q.worldedit.MaxChangedBlocksException;
 import com.sk89q.worldedit.Vector;
 import com.sk89q.worldedit.WorldVector;
 import com.sk89q.worldedit.filtering.GaussianKernel;
 import com.sk89q.worldedit.filtering.HeightMapFilter;
+import com.sk89q.worldedit.operations.Operation;
 import com.sk89q.worldedit.patterns.Pattern;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
@@ -43,14 +46,16 @@ public class SmoothBrush implements Brush {
         this.naturalOnly = naturalOnly;
     }
 
-    public void build(EditSession editSession, Vector pos, Pattern mat, double size)
+    public Operation<Boolean> build(EditSession editSession, Vector pos, Pattern mat, double rad)
             throws MaxChangedBlocksException {
-        double rad = size;
         WorldVector min = new WorldVector(editSession.getWorld(), pos.subtract(rad, rad, rad));
         Vector max = pos.add(rad, rad + 10, rad);
-        Region region = new CuboidRegion(editSession.getWorld(), min, max);
-        HeightMap heightMap = new HeightMap(editSession, region, naturalOnly);
-        HeightMapFilter filter = new HeightMapFilter(new GaussianKernel(5, 1.0));
-        heightMap.applyFilter(filter, iterations);
+        final Region newRegion = new CuboidRegion(editSession.getWorld(), min, max);
+        return new HeightMap(editSession, new HeightMapFilter(new GaussianKernel(5, 1.0)), iterations, naturalOnly) {
+            @Override
+            protected void updateValues(LocalSession session, LocalPlayer player) {
+                this.region = newRegion;
+            }
+        };
     }
 }

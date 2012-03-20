@@ -27,12 +27,12 @@ import com.sk89q.worldedit.LocalPlayer;
  *
  * @author sk89q
  */
-public abstract interface Tool {
+public interface Tool {
 
     /**
      * Checks to see if the player can still be using this tool (considering
      * permissions and such).
-     * 
+     *
      * @param player
      * @return
      */

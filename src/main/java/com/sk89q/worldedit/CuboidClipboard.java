@@ -337,13 +337,13 @@ public class CuboidClipboard {
         int height = getHeight();
         int length = getLength();
 
-        if (width > 65535) {
+        if (width > Short.MAX_VALUE * 2) {
             throw new DataException("Width of region too large for a .schematic");
         }
-        if (height > 65535) {
+        if (height > Short.MAX_VALUE * 2) {
             throw new DataException("Height of region too large for a .schematic");
         }
-        if (length > 65535) {
+        if (length > Short.MAX_VALUE * 2) {
             throw new DataException("Length of region too large for a .schematic");
         }
 

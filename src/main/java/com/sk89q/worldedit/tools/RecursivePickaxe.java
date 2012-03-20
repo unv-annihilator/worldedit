@@ -29,7 +29,7 @@ import com.sk89q.worldedit.blocks.BlockID;
 /**
  * A pickaxe mode that recursively finds adjacent blocks within range of
  * an initial block and of the same type.
- * 
+ *
  * @author sk89q
  */
 public class RecursivePickaxe implements BlockTool {
@@ -67,7 +67,7 @@ public class RecursivePickaxe implements BlockTool {
         } catch (MaxChangedBlocksException e) {
             player.printError("Max blocks change limit reached.");
         } finally {
-            session.remember(editSession);
+            //session.remember(editSession);
         }
 
         return true;
@@ -75,7 +75,7 @@ public class RecursivePickaxe implements BlockTool {
 
     /**
      * Helper method.
-     * 
+     *
      * @param server
      * @param superPickaxeManyDrop
      * @param world

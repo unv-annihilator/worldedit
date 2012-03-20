@@ -19,8 +19,8 @@
 
 package com.sk89q.worldedit.masks;
 
-import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.Vector;
+import com.sk89q.worldedit.operations.Operation;
 import com.sk89q.worldedit.regions.Region;
 
 public class RegionMask implements Mask {
@@ -31,7 +31,7 @@ public class RegionMask implements Mask {
         this.region = region;
     }
 
-    public boolean matches(EditSession editSession, Vector pos) {
+    public boolean matches(Operation editSession, Vector pos) {
         return region.contains(pos);
     }
 

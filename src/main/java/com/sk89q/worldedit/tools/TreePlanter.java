@@ -24,7 +24,7 @@ import com.sk89q.worldedit.util.TreeGenerator;
 
 /**
  * Plants a tree.
- * 
+ *
  * @author sk89q
  */
 public class TreePlanter implements BlockTool {
@@ -45,21 +45,21 @@ public class TreePlanter implements BlockTool {
 
         try {
             boolean successful = false;
-            
+
             for (int i = 0; i < 10; i++) {
                 if (gen.generate(editSession, clicked.add(0, 1, 0))) {
                     successful = true;
                     break;
                 }
             }
-            
+
             if (!successful) {
                 player.printError("A tree can't go there.");
             }
         } catch (MaxChangedBlocksException e) {
             player.printError("Max. blocks changed reached.");
         } finally {
-            session.remember(editSession);
+            //session.remember(editSession);
         }
 
         return true;

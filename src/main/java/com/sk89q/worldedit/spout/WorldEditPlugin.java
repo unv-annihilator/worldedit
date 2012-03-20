@@ -22,6 +22,7 @@ package com.sk89q.worldedit.spout;
 import com.sk89q.util.yaml.YAMLProcessor;
 import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.bags.BlockBag;
+import com.sk89q.worldedit.operations.Operation;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Polygonal2DRegion;
 import com.sk89q.worldedit.regions.Region;
@@ -225,7 +226,7 @@ public class WorldEditPlugin extends CommonPlugin implements Named {
         LocalPlayer wePlayer = wrapPlayer(player);
         LocalSession session = controller.getSession(wePlayer);
 
-        session.remember(editSession);
+        session.remember(editSession.getPerformedOperations());
         editSession.flushQueue();
 
         controller.flushBlockBag(wePlayer, editSession);
@@ -238,14 +239,14 @@ public class WorldEditPlugin extends CommonPlugin implements Named {
      * @param op
      * @throws Throwable
      */
-    public void perform(Player player, WorldEditOperation op)
+    public void perform(Player player, Operation op)
             throws Throwable {
         LocalPlayer wePlayer = wrapPlayer(player);
         LocalSession session = controller.getSession(wePlayer);
 
         EditSession editSession = createEditSession(player);
         try {
-            op.run(session, wePlayer, editSession);
+            op.run(session, wePlayer);
         } finally {
             remember(player, editSession);
         }

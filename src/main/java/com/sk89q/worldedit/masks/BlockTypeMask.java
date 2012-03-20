@@ -21,8 +21,9 @@ package com.sk89q.worldedit.masks;
 
 import java.util.HashSet;
 import java.util.Set;
-import com.sk89q.worldedit.EditSession;
+
 import com.sk89q.worldedit.Vector;
+import com.sk89q.worldedit.operations.Operation;
 
 /**
  * A filter that matches blocks based on block types.
@@ -49,7 +50,7 @@ public class BlockTypeMask implements Mask {
         types.add(type);
     }
 
-    public boolean matches(EditSession editSession, Vector pos) {
+    public boolean matches(Operation editSession, Vector pos) {
         return types.contains(editSession.getBlockType(pos));
     }
 

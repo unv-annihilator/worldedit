@@ -22,8 +22,8 @@ package com.sk89q.worldedit.masks;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.Vector;
+import com.sk89q.worldedit.operations.Operation;
 import com.sk89q.worldedit.blocks.BlockID;
 
 /**
@@ -44,7 +44,7 @@ public class UnderOverlayMask implements Mask {
         this.ids.addAll(ids);
     }
 
-    public boolean matches(EditSession editSession, Vector pos) {
+    public boolean matches(Operation editSession, Vector pos) {
         int id = editSession.getBlock(pos.setY(pos.getBlockY() + (overlay ? -1 : 1))).getType();
         return ids.isEmpty() ? id != BlockID.AIR : ids.contains(id);
     }

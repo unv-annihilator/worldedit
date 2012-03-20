@@ -24,11 +24,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import com.sk89q.worldedit.EditSession;
+import com.sk89q.worldedit.LocalPlayer;
+import com.sk89q.worldedit.LocalSession;
 import com.sk89q.worldedit.LocalWorld;
 import com.sk89q.worldedit.MaxChangedBlocksException;
 import com.sk89q.worldedit.Vector;
+import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.blocks.BlockID;
+import com.sk89q.worldedit.operations.VectorOperation;
 
 /**
  * Tree generator.
@@ -44,8 +48,9 @@ public class TreeGenerator {
         BIRCH("Birch", "birch", "white", "whitebark"),
         PINE("Pine", "pine") {
             public boolean generate(EditSession editSession, Vector pos) throws MaxChangedBlocksException {
-                makePineTree(editSession, pos);
-                return true;
+                PineTreeGenerator gen = new PineTreeGenerator(editSession, pos);
+                editSession.rememberOperation(gen);
+                return gen.operate(null, null);
             }
         },
         RANDOM_REDWOOD("Random redwood",  "randredwood", "randomredwood", "anyredwood" ) {
@@ -162,61 +167,72 @@ public class TreeGenerator {
 
     /**
      * Makes a terrible looking pine tree.
-     *
-     * @param basePos
      */
-    private static void makePineTree(EditSession editSession, Vector basePos)
-            throws MaxChangedBlocksException {
-        int trunkHeight = (int) Math.floor(Math.random() * 2) + 3;
-        int height = (int) Math.floor(Math.random() * 5) + 8;
+    public static class PineTreeGenerator extends VectorOperation<Boolean> {
 
-        BaseBlock logBlock = new BaseBlock(BlockID.LOG);
-        BaseBlock leavesBlock = new BaseBlock(BlockID.LEAVES);
-
-        // Create trunk
-        for (int i = 0; i < trunkHeight; ++i) {
-            if (!editSession.setBlockIfAir(basePos.add(0, i, 0), logBlock)) {
-                return;
-            }
+        public PineTreeGenerator(EditSession session) {
+            super(session);
         }
 
-        // Move up
-        basePos = basePos.add(0, trunkHeight, 0);
-
-        // Create tree + leaves
-        for (int i = 0; i < height; ++i) {
-            editSession.setBlockIfAir(basePos.add(0, i, 0), logBlock);
-
-            // Less leaves at these levels
-            double chance = ((i == 0 || i == height - 1) ? 0.6 : 1);
-
-            // Inner leaves
-            editSession.setChanceBlockIfAir(basePos.add(-1, i, 0), leavesBlock, chance);
-            editSession.setChanceBlockIfAir(basePos.add(1, i, 0), leavesBlock, chance);
-            editSession.setChanceBlockIfAir(basePos.add(0, i, -1), leavesBlock, chance);
-            editSession.setChanceBlockIfAir(basePos.add(0, i, 1), leavesBlock, chance);
-            editSession.setChanceBlockIfAir(basePos.add(1, i, 1), leavesBlock, chance);
-            editSession.setChanceBlockIfAir(basePos.add(-1, i, 1), leavesBlock, chance);
-            editSession.setChanceBlockIfAir(basePos.add(1, i, -1), leavesBlock, chance);
-            editSession.setChanceBlockIfAir(basePos.add(-1, i, -1), leavesBlock, chance);
-
-            if (!(i == 0 || i == height - 1)) {
-                for (int j = -2; j <= 2; ++j) {
-                    editSession.setChanceBlockIfAir(basePos.add(-2, i, j), leavesBlock, 0.6);
-                }
-                for (int j = -2; j <= 2; ++j) {
-                    editSession.setChanceBlockIfAir(basePos.add(2, i, j), leavesBlock, 0.6);
-                }
-                for (int j = -2; j <= 2; ++j) {
-                    editSession.setChanceBlockIfAir(basePos.add(j, i, -2), leavesBlock, 0.6);
-                }
-                for (int j = -2; j <= 2; ++j) {
-                    editSession.setChanceBlockIfAir(basePos.add(j, i, 2), leavesBlock, 0.6);
-                }
-            }
+        public PineTreeGenerator(EditSession session, Vector point) {
+            super(session, point);
         }
 
-        editSession.setBlockIfAir(basePos.add(0, height, 0), leavesBlock);
+        @Override
+        protected Boolean operate(LocalSession session, LocalPlayer player) throws MaxChangedBlocksException {
+            Vector basePos = getPoint();
+            int trunkHeight = (int) Math.floor(Math.random() * 2) + 3;
+            int height = (int) Math.floor(Math.random() * 5) + 8;
+
+            BaseBlock logBlock = new BaseBlock(BlockID.LOG);
+            BaseBlock leavesBlock = new BaseBlock(BlockID.LEAVES);
+
+            // Create trunk
+            for (int i = 0; i < trunkHeight; ++i) {
+                if (!setBlockIfAir(basePos.add(0, i, 0), logBlock)) {
+                    return false;
+                }
+            }
+
+            // Move up
+            basePos = basePos.add(0, trunkHeight, 0);
+
+            // Create tree + leaves
+            for (int i = 0; i < height; ++i) {
+                setBlockIfAir(basePos.add(0, i, 0), logBlock);
+
+                // Less leaves at these levels
+                double chance = ((i == 0 || i == height - 1) ? 0.6 : 1);
+
+                // Inner leaves
+                setChanceBlockIfAir(basePos.add(-1, i, 0), leavesBlock, chance);
+                setChanceBlockIfAir(basePos.add(1, i, 0), leavesBlock, chance);
+                setChanceBlockIfAir(basePos.add(0, i, -1), leavesBlock, chance);
+                setChanceBlockIfAir(basePos.add(0, i, 1), leavesBlock, chance);
+                setChanceBlockIfAir(basePos.add(1, i, 1), leavesBlock, chance);
+                setChanceBlockIfAir(basePos.add(-1, i, 1), leavesBlock, chance);
+                setChanceBlockIfAir(basePos.add(1, i, -1), leavesBlock, chance);
+                setChanceBlockIfAir(basePos.add(-1, i, -1), leavesBlock, chance);
+
+                if (!(i == 0 || i == height - 1)) {
+                    for (int j = -2; j <= 2; ++j) {
+                        setChanceBlockIfAir(basePos.add(-2, i, j), leavesBlock, 0.6);
+                    }
+                    for (int j = -2; j <= 2; ++j) {
+                        setChanceBlockIfAir(basePos.add(2, i, j), leavesBlock, 0.6);
+                    }
+                    for (int j = -2; j <= 2; ++j) {
+                        setChanceBlockIfAir(basePos.add(j, i, -2), leavesBlock, 0.6);
+                    }
+                    for (int j = -2; j <= 2; ++j) {
+                        setChanceBlockIfAir(basePos.add(j, i, 2), leavesBlock, 0.6);
+                    }
+                }
+            }
+
+            setBlockIfAir(basePos.add(0, height, 0), leavesBlock);
+            return true;
+        }
     }
 
     /**

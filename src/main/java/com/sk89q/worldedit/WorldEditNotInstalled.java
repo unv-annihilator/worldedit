@@ -21,6 +21,8 @@ package com.sk89q.worldedit;
 
 /**
  * Raised when WorldEdit is not installed.
+ * Yes, you read that right, an exception in WorldEdit to be thrown when WorldEdit
+ * is not present. For real.
  *
  * @author sk89q
  */

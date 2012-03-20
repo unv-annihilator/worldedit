@@ -24,7 +24,7 @@ import com.sk89q.worldedit.blocks.*;
 
 /**
  * Plants a tree.
- * 
+ *
  * @author sk89q
  */
 public class QueryTool implements BlockTool {
@@ -37,7 +37,7 @@ public class QueryTool implements BlockTool {
             LocalPlayer player, LocalSession session, WorldVector clicked) {
 
         LocalWorld world = clicked.getWorld();
-        BaseBlock block = (new EditSession(world, 0)).rawGetBlock(clicked);
+        BaseBlock block = (new EditSession(world, 0)).getBlock(clicked);
         BlockType type = BlockType.fromID(block.getType());
 
         player.print("\u00A79@" + clicked + ": " + "\u00A7e"
